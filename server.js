@@ -3,7 +3,6 @@ const http = require("http").Server(app);
 const cors = require("cors");
 app.use(cors());
 const fs = require("fs");
-const usersJson = require("./users.json");
 
 const io = require("socket.io")(http, {
   cors: {
@@ -13,11 +12,8 @@ const io = require("socket.io")(http, {
 });
 // backend is set on this port
 
-const messages = [{ username: "Bot", message: "Welcome to the chat" }];
-const users = [
-  { username: "osama", password: "123", onlineStatus: false, socketId: "" },
-  { username: "umair", password: "123", onlineStatus: false, socketId: "" },
-];
+// const messages = [{ username: "Bot", message: "Welcome to the chat" }];
+// chat history wont be saved. resets on every new connection
 
 io.on("connect", (socket) => {
   socket.on("login", (username, password) => {
@@ -93,6 +89,10 @@ io.on("connect", (socket) => {
         const userLoggingOut = file.users.find(
           (user) => user.username === username
         );
+        if (!userLoggingOut) {
+          console.log("sth went wrong");
+          return;
+        }
         console.log("server check", userLoggingOut);
         userLoggingOut.onlineStatus = false;
 
@@ -112,28 +112,47 @@ io.on("connect", (socket) => {
     });
   });
 
-  socket.on("send-message", (message, username, channelID) => {
-    io.emit("receive-message", message, username, channelID);
-    messages.push({ username, message });
+  socket.on("send-message", (message, username) => {
+    fs.readFile("./messages.json", (err, data) => {
+      try {
+        const file = JSON.parse(data);
+        const updatedFile = file.messages.push({
+          username: username,
+          message: message,
+        });
+        const updatedMessages = JSON.stringify(file);
+        fs.writeFile("./messages.json", updatedMessages, (err) => {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log("messages.json updated");
+            // io.emit("verifying-message", message, username);
+          }
+        });
+      } catch (err) {
+        console.log("check ", err);
+      }
+    });
+
+    // io.emit("receive-message", message, username); // was doing this when chat history wasnt beinge preserved
+    // messages.push({ username, message });
   });
 
   socket.on("sign-up", (username, password) => {
     users.push({ username, password });
   });
-
-  socket.on("disconn", (username) => {
-    console.log("time", username);
-    const user = users.find((user) => user.username === username);
-    console.log(user);
-    if (user) {
-      user.socketId = "";
-      user.onlineStatus = false;
-    }
-  });
 });
 
 app.get("/get-chat-history", (req, res, next) => {
-  res.send(JSON.stringify(messages));
+  // res.send(JSON.stringify(messages));
+  fs.readFile("./messages.json", "utf8", (err, data) => {
+    if (err) {
+      console.log("File read failed:", err);
+      return err;
+    }
+    const parsedData = JSON.parse(data);
+    res.send(parsedData.messages);
+  });
 });
 
 app.get("/get-users", (req, res, next) => {
