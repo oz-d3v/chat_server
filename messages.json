@@ -3,10 +3,8 @@
     {
       "username": "Bot",
       "message": "This is the start of the chat",
-      "seen": true
+      "seen": false
     },
-    { "username": "Bot", "message": "chat history is saved", "seen": true },
-    { "username": "umair", "message": "check", "seen": true },
-    { "username": "umair", "message": "omg", "seen": true }
+    { "username": "Bot", "message": "chat history is saved", "seen": false }
   ]
 }
